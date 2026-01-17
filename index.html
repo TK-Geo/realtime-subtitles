@@ -39,7 +39,11 @@ document.getElementById("start").onclick = async () => {
   const EPHEMERAL_KEY = token.value;
 
   // 2) WebRTC：建立 RTCPeerConnection
-  const pc = new RTCPeerConnection();
+  const pc = new RTCPeerConnection({
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" }
+  ]
+});
 
   // 3) 添加麦克风音轨
   statusEl.textContent = "Requesting microphone...";
@@ -103,3 +107,4 @@ document.getElementById("start").onclick = async () => {
 </script>
 </body>
 </html>
+
