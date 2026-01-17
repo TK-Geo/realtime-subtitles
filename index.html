@@ -84,19 +84,39 @@ document.getElementById("start").onclick = async () => {
   // 5) SDP 交换：offer -> OpenAI /v1/realtime/calls -> answer
   statusEl.textContent = "Connecting to Realtime...";
   const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
+await pc.setLocalDescription(offer);
 
-  const resp = await fetch("https://api.openai.com/v1/realtime/calls", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${EPHEMERAL_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      sdp: pc.localDescription.sdp,
-      session: { type: "realtime" }
-    })
-  });
+// ⭐ 等 ICE candidates 收集完成
+await new Promise(resolve => {
+  if (pc.iceGatheringState === "complete") {
+    resolve();
+  } else {
+    pc.addEventListener("icegatheringstatechange", () => {
+      if (pc.iceGatheringState === "complete") {
+        resolve();
+      }
+    });
+  }
+});
+
+// ⭐ 再把 SDP 发给 OpenAI
+const resp = await fetch("https://api.openai.com/v1/realtime/calls", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${EPHEMERAL_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    sdp: pc.localDescription.sdp,
+    session: { type: "realtime" }
+  }),
+});
+
+if (!resp.ok) throw new Error(await resp.text());
+
+const data = await resp.json();
+await pc.setRemoteDescription({ type: "answer", sdp: data.sdp });
+
 
   if (!resp.ok) throw new Error(await resp.text());
   const data = await resp.json();
@@ -107,4 +127,5 @@ document.getElementById("start").onclick = async () => {
 </script>
 </body>
 </html>
+
 
